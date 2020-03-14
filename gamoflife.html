@@ -1,0 +1,163 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Moving sprites</title>
+<body>
+<script src="../pixi/pixi.min.js"></script>
+<script>
+
+//Aliases
+let Application = PIXI.Application,
+    Container = PIXI.Container,
+    loader = PIXI.loader,
+    resources = PIXI.loader.resources,
+    TextureCache = PIXI.utils.TextureCache,
+    Sprite = PIXI.Sprite;
+
+let width = 1500;
+let height = 845;
+let fieldPerPixel = 0.25;
+let rate = 0.2;
+let framesToRefresh = 0;
+
+//calculated
+let fieldWidth = Math.round(width * fieldPerPixel);
+let fieldHeight = Math.round(height * fieldPerPixel);
+let cellWidth = width/fieldWidth;
+let cellHeight = height/fieldHeight;
+
+//Create a Pixi Application
+let app = new Application({
+    width: width,
+    height: height,
+    antialiasing: true,
+    transparent: false,
+    resolution: 1
+  }
+);
+
+//Add the canvas that Pixi automatically created for you to the HTML document
+document.body.appendChild(app.view);
+
+loader
+  .add("images/cat.png")
+  .load(setup);
+
+//Define any variables that are used in more than one function
+let cat;
+
+let rect;
+
+function setup() {
+
+  rect = new PIXI.Graphics();
+  app.stage.addChild(rect);
+
+  app.ticker.add(delta => gameLoop(delta));
+}
+
+
+var gameField = new Array(fieldWidth);
+var gameFieldLastVisited = new Array(fieldWidth);
+
+for (let x = 0; x < fieldWidth; x++) {
+  gameField[x] = new Array(fieldHeight);
+  gameFieldLastVisited[x] = new Array(fieldHeight);
+  for (let y = 0; y < fieldHeight; y++) {
+    gameField[x][y] = Math.random() >= (1.0-rate);
+    if(gameField[x][y])
+      gameFieldLastVisited[x][y] = 0;
+    else
+      gameFieldLastVisited[x][y] = 100;
+  }
+}
+
+var frameCounter = framesToRefresh;
+
+function gameLoop(delta){
+  frameCounter++;
+  if(frameCounter >= framesToRefresh){
+    frameCounter = 0;
+    gameStep();
+  }
+}
+
+function gameStep(){
+  rect.clear()
+
+  var copyOfGameField = cloneField(gameField);
+
+  for (let x = 0; x < fieldWidth; x++) {
+    for (let y = 0; y < fieldHeight; y++) {
+      let ngbCounter = getNeighboursCount(copyOfGameField, x, y);
+      if(gameField[x][y] && (ngbCounter < 2 || ngbCounter > 3 ))
+        gameField[x][y] = false;
+      else if(!gameField[x][y] && ngbCounter == 3)
+        gameField[x][y] = true;
+      // gameField[x][y] = Math.random() >= 0.8;
+    }
+  }
+
+  for (let x = 0; x < fieldWidth; x++) {
+    for (let y = 0; y < fieldHeight; y++) {
+      if(gameField[x][y])
+        gameFieldLastVisited[x][y] = 0;
+      else if(gameFieldLastVisited[x][y] < 10)
+        gameFieldLastVisited[x][y]++;
+
+      let alp;
+      if(gameFieldLastVisited[x][y] == 0)
+        {alp = 1.0;rect.beginFill(rgb(0*alp,130*alp,200*alp));}
+      else if(gameFieldLastVisited[x][y] < 2)
+        {alp = 0.8;rect.beginFill(rgb(0*alp,130*alp,200*alp));}
+      else if(gameFieldLastVisited[x][y] < 4)
+       { alp = 0.4;rect.beginFill(rgb(255*alp,0*alp,90*alp));}
+      else if(gameFieldLastVisited[x][y] < 10)
+        {alp = 0.2;rect.beginFill(rgb(255*alp,0*alp,90*alp));}
+      else
+        {alp = 0.0;rect.beginFill(rgb(0,0,0));}
+
+
+
+      rect.drawRect(x*cellWidth,y*cellHeight,cellWidth,cellHeight);
+    }
+  }
+}
+
+function cloneField(field){
+  var newArray = field.map(function(arr) {
+    return arr.slice();
+  });
+  return newArray;
+}
+
+function getNeighboursCount(field, x, y){
+  var ngbCounter = 0;
+
+  if(x>0 && field[x-1][y])
+    ngbCounter++;
+  if(x>0 && y>0 && field[x-1][y-1])
+    ngbCounter++;
+  if(x>0 && y<fieldHeight-1 && field[x-1][y+1])
+    ngbCounter++;
+
+  if(y>0 && field[x][y-1])
+    ngbCounter++;
+  if(y<fieldHeight-1 && field[x][y+1])
+    ngbCounter++;
+
+  if(x<fieldWidth-1 && field[x+1][y])
+    ngbCounter++;
+  if(x<fieldWidth-1 && y>0 && field[x+1][y-1])
+    ngbCounter++;
+  if(x<fieldWidth-1 && y<fieldHeight-1 && field[x+1][y+1])
+    ngbCounter++;
+
+  return ngbCounter;
+}
+
+function rgb(r, g, b) {
+  return (r << 16) + (g << 8) + (b);
+}
+
+</script>
+</body>
